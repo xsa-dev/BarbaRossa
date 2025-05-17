@@ -1,0 +1,6 @@
+.idea
+meta/*
+out/*
+temp/*
+**__pycache__**
+
