@@ -424,14 +424,14 @@ else
     log_message "Video already exists in temp directory. Using existing file: $video_file"
 fi
 
-# Generate voiceover using vot-cli
-log_message "=== Running vot-cli to generate voiceover ==="
+# Generate voiceover using vot-cli-live
+log_message "=== Running vot-cli-live to generate voiceover ==="
 temp_output="./temp/"
 
-# Get current timestamp before running vot-cli
+# Get current timestamp before running vot-cli-live
 before_vot=$(date +%s)
 
-# Run vot-cli with timeout using bash built-in
+# Run vot-cli-live with timeout using bash built-in
 translation_success=0
 log_message "=== Starting translation attempt 1 ==="
 
@@ -459,9 +459,9 @@ run_with_timeout() {
 }
 
 # Пробуем с прокси
-if ! run_with_timeout vot-cli "$youtube_url" --output "$temp_output" --reslang "$reslang"; then
+if ! run_with_timeout vot-cli-live "$youtube_url" --output "$temp_output" --reslang "$reslang"; then
     log_message "=== First attempt failed, trying without proxy ==="
-    if ! run_with_timeout vot-cli "$youtube_url" --output "$temp_output" --reslang "$reslang"; then
+    if ! run_with_timeout vot-cli-live "$youtube_url" --output "$temp_output" --reslang "$reslang"; then
         log_message "=== Translation failed, will use original video ==="
         translation_success=1
         # Копируем оригинальное видео в выходной файл с припиской ORIGINAL
@@ -471,9 +471,9 @@ if ! run_with_timeout vot-cli "$youtube_url" --output "$temp_output" --reslang "
     fi
 fi
 
-# Find the most recently created audio file by vot-cli
+# Find the most recently created audio file by vot-cli-live
 log_message "=== Searching for generated audio file ==="
-# Look for files created after vot-cli started
+# Look for files created after vot-cli-live started
 audio_file=""
 if [ $translation_success -eq 0 ]; then
     audio_file=$(find "./temp" -type f -name "${video_id}---*.mp3" -newermt "@$before_vot" 2>/dev/null | head -1)
