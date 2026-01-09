@@ -293,6 +293,9 @@ safe_title=$(
     head -c 100
 )
 
+# Debug log for safe_title
+echo "Safe title for filenames: $safe_title"
+
 # Определяем пути к файлам с безопасным именем
 video_file="./temp/${safe_title}_${video_id}.mp4"
 output_file="./output/${safe_title}_${video_id}_final.mp4"
@@ -302,17 +305,17 @@ log_message_file="./meta/${safe_title}_${video_id}_$(date +%Y%m%d_%H%M%S).log_me
 mkdir -p "./output" "./meta" "./temp"
 
 # Создаем функцию для логирования
-log_message_message() {
+log_message() {
     local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
     echo "[$timestamp] $1" | tee -a "$log_message_file"
 }
 
 echo "Video will be saved as: $video_file"
-log_message_message "Starting processing of video: $youtube_url"
+log_message "Starting processing of video: $youtube_url"
 
 # Download video if it doesn't exist
 if [ ! -f "$video_file" ]; then
-    log_message_message "=== Downloading video (this may take a while) ==="
+    log_message "=== Downloading video (this may take a while) ==="
     
     # Пробуем скачать в самом простом формате
     log_message "Starting video download to: $video_file"
@@ -459,9 +462,9 @@ run_with_timeout() {
 }
 
 # Пробуем с прокси
-if ! run_with_timeout vot-cli-live "$youtube_url" --output "$temp_output" --reslang "$reslang"; then
+if ! run_with_timeout vot-cli-live "$youtube_url" --output "$temp_output" --output-file "${safe_title}.mp3" --reslang "$reslang"; then
     log_message "=== First attempt failed, trying without proxy ==="
-    if ! run_with_timeout vot-cli-live "$youtube_url" --output "$temp_output" --reslang "$reslang"; then
+    if ! run_with_timeout vot-cli-live "$youtube_url" --output "$temp_output" --output-file "${safe_title}.mp3" --reslang "$reslang"; then
         log_message "=== Translation failed, will use original video ==="
         translation_success=1
         # Копируем оригинальное видео в выходной файл с припиской ORIGINAL
@@ -471,21 +474,38 @@ if ! run_with_timeout vot-cli-live "$youtube_url" --output "$temp_output" --resl
     fi
 fi
 
-# Find the most recently created audio file by vot-cli-live
+# Find the generated audio file by vot-cli-live
 log_message "=== Searching for generated audio file ==="
-# Look for files created after vot-cli-live started
 audio_file=""
+expected_audio="./temp/${safe_title}.mp3"
+
 if [ $translation_success -eq 0 ]; then
-    audio_file=$(find "./temp" -type f -name "${video_id}---*.mp3" -newermt "@$before_vot" 2>/dev/null | head -1)
-    
-    # If not found, try to find any matching file
-    if [ -z "$audio_file" ] || [ ! -f "$audio_file" ]; then
-        log_message "No new audio files found by timestamp, searching for any matching file..."
-        audio_file=$(find "./temp" -type f -name "${video_id}---*.mp3" 2>/dev/null | head -1)
+    log_message "Expected audio file path: $expected_audio"
+
+    # Check if file exists
+    if [ -f "$expected_audio" ]; then
+        audio_file="$expected_audio"
+        log_message "✓ Audio file found: $audio_file"
+
+        # Display file info
+        if command -v ls >/dev/null 2>&1; then
+            file_size=$(ls -lh "$audio_file" | awk '{print $5}')
+            log_message "Audio file size: $file_size"
+        fi
+    else
+        log_message "✗ Expected audio file not found: $expected_audio"
+
+        # List all mp3 files in temp for debugging
+        log_message "All MP3 files in ./temp/:"
+        find "./temp" -type f -name "*.mp3" -maxdepth 1 2>/dev/null | while read f; do
+            if [ -f "$f" ]; then
+                file_size=$(ls -lh "$f" 2>/dev/null | awk '{print $5}')
+                log_message "  - $(basename "$f") ($file_size)"
+            fi
+        done
     fi
-    
+
     if [ -n "$audio_file" ] && [ -f "$audio_file" ]; then
-        log_message "Found audio file: $audio_file"
         
         # Check if the video file exists and has an audio stream
         if [ ! -f "$video_file" ]; then
@@ -520,11 +540,18 @@ if [ $translation_success -eq 0 ]; then
             fi
         fi
     else
-        log_message "Warning: No audio file found for video ID $video_id. Using original video audio only."
+        log_message "✗ No audio file found. Expected: $expected_audio"
+        log_message "Possible reasons:"
+        log_message "  - Translation failed (see vot-cli-live output above)"
+        log_message "  - File was created with different name"
+        log_message "  - vot-cli-live version changed naming convention"
+        log_message ""
+        log_message "Using original video audio only."
         if [ -f "$video_file" ]; then
             cp "$video_file" "$output_file"
+            log_message "✓ Copied original video to: $output_file"
         else
-            log_message "Error: Video file not found at $video_file"
+            log_message "✗ Error: Video file not found at $video_file"
             exit 1
         fi
     fi
