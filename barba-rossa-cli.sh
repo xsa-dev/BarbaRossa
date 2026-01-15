@@ -213,6 +213,10 @@ case "$1" in
         
         echo "Обработка видео: $next_url (качество: $video_quality, язык: $reslang)"
         youtube_url="$next_url"
+        
+        # Устанавливаем переменные для обработки
+        quality_arg="$video_quality"
+        lang_arg="$reslang"
         ;;
     playlist)
         if [ -z "$2" ]; then
@@ -461,17 +465,40 @@ run_with_timeout() {
     fi
 }
 
-# Пробуем с прокси
-if ! run_with_timeout vot-cli-live "$youtube_url" --output "$temp_output" --output-file "${safe_title}.mp3" --reslang "$reslang"; then
-    log_message "=== First attempt failed, trying without proxy ==="
-    if ! run_with_timeout vot-cli-live "$youtube_url" --output "$temp_output" --output-file "${safe_title}.mp3" --reslang "$reslang"; then
-        log_message "=== Translation failed, will use original video ==="
+# Улучшенный fallback-механизм с цепочкой попыток
+translation_success=0
+fallback_attempts=0
+
+# Попытка 1: Основной режим (живые голоса, русский)
+log_message "=== Попытка 1: Живые голоса (по умолчанию) ==="
+if run_with_timeout vot-cli-live "$youtube_url" --output "$temp_output" \
+     --output-file "${safe_title}.mp3" --reslang "$reslang" && [ -f "${temp_output}/${safe_title}.mp3" ]; then
+    translation_success=1
+    log_message "✅ Успешный перевод с живыми голосами"
+else
+    log_message "❌ Попытка 1 провалилась"
+    fallback_attempts=1
+
+    # Попытка 2: TTS режим (альтернативный TTS)
+    log_message "=== Попытка 2: Стандартный TTS ==="
+    if run_with_timeout vot-cli-live "$youtube_url" --output "$temp_output" \
+         --output-file "${safe_title}.mp3" --reslang "$reslang" --voice-style=tts && [ -f "${temp_output}/${safe_title}.mp3" ]; then
         translation_success=1
-        # Копируем оригинальное видео в выходной файл с припиской ORIGINAL
-        cp "$video_file" "${output_file%.*}_ORIGINAL.${output_file##*.}"
-        log_message "Saved original video as: ${output_file%.*}_ORIGINAL.${output_file##*.}"
-        exit 0
+        log_message "✅ Успешный перевод с TTS"
+    else
+        log_message "❌ Попытка 2 провалилась"
+        fallback_attempts=2
     fi
+fi
+
+# Если все попытки провалились
+if [ $translation_success -eq 0 ]; then
+    log_message "❌ Все попытки перевода провалились ($fallback_attempts попыток)"
+    log_message "Используем оригинальное видео"
+    # Копируем оригинальное видео в выходной файл с припиской ORIGINAL
+    cp "$video_file" "${output_file%.*}_ORIGINAL.${output_file##*.}"
+    log_message "Saved original video as: ${output_file%.*}_ORIGINAL.${output_file##*.}"
+    exit 0
 fi
 
 # Find the generated audio file by vot-cli-live
@@ -479,7 +506,7 @@ log_message "=== Searching for generated audio file ==="
 audio_file=""
 expected_audio="./temp/${safe_title}.mp3"
 
-if [ $translation_success -eq 0 ]; then
+if [ $translation_success -eq 1 ]; then
     log_message "Expected audio file path: $expected_audio"
 
     # Check if file exists
