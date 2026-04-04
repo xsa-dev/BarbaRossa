@@ -1,6 +1,50 @@
-.idea
+# === IDE ===
+.idea/
+.ropeproject/
+
+# === Python ===
+**__pycache__**/
+*.py[cod]
+.venv/
+api/venv/
+
+# === Node.js ===
+node_modules/
+
+# === ML/Caches ===
+.fastembed_cache/
+
+# === Runtime файлы ===
+queue.txt
+queue.lock
+status/
+failed_translations.txt
+original_playlist.txt
+
+# === Временные/выходные директории ===
 meta/*
 out/*
 temp/*
-**__pycache__**
+output/
+youtube-meta-translator-extracted/
 
+# === Логи ===
+*.log
+*.log_message
+
+# === macOS ===
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# === Планировщики/Claude ===
+.sisyphus/
+.claude/
+
+# === Бинарные навыки ===
+youtube-meta-translator.skill
+
+# === Переменные окружения ===
+.env
+.env.local
+.env.*.local

@@ -278,6 +278,20 @@ if [ -z "$video_id" ]; then
     video_id=$(echo "$youtube_url" | sed -n 's/.*youtu\.be\/\([^?&]*\).*/\1/p')
     if [ -z "$video_id" ]; then
         echo "Error: Could not extract video ID from URL"
+        echo ""
+        echo "Possible reasons:"
+        echo "  1. URL contains tracking parameters (?si=...)"
+        echo "  2. URL format is not recognized"
+        echo ""
+        echo "Solution: Use the 'Share' button on YouTube to get a clean URL"
+        echo "  - On YouTube video page, click Share button"
+        echo "  - Copy the link (format: https://youtu.be/VIDEO_ID)"
+        echo ""
+        echo "Example of correct URL:"
+        echo "  https://youtu.be/32Ie8OGrPNc"
+        echo ""
+        echo "Avoid URLs like:"
+        echo "  https://www.youtube.com/watch?v=32Ie8OGrPNc?si=..."
         exit 1
     fi
 fi
@@ -444,7 +458,7 @@ log_message "=== Starting translation attempt 1 ==="
 
 # Функция для запуска с таймаутом
 run_with_timeout() {
-    local timeout=600  # 10 минут
+    local timeout=3600  # 60 минут для длинных видео
     local cmd=("$@")
     
     # Запускаем команду в фоне
