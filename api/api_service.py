@@ -29,6 +29,9 @@ class ProcessRequest(BaseModel):
     cookies_path: Optional[str] = None
     save_metadata: bool = True
     cleanup_temp: bool = True
+    is_playlist: bool = False
+    playlist_start: Optional[int] = None
+    playlist_end: Optional[int] = None
 
 @app.post("/process")
 def process_video(request: ProcessRequest, background_tasks: BackgroundTasks):
@@ -235,16 +238,18 @@ def merge_video_audio(video_file: str, audio_file: str, output_path: str) -> boo
 def run_barba_rossa(
     url: str, 
     task_id: str, 
+    video_id: Optional[str] = None,  # Добавляем video_id как необязательный параметр
     use_cookies: bool = True,
     cookies_path: Optional[str] = None,
     save_metadata: bool = True,
     cleanup_temp: bool = True
 ):
     try:
-        # Extract video ID
-        video_id = extract_video_id(url)
+        # Extract video ID if not provided
         if not video_id:
-            raise ValueError("Could not extract video ID from URL")
+            video_id = extract_video_id(url)
+            if not video_id:
+                raise ValueError("Could not extract video ID from URL")
         
         # Download video
         download_success, download_error = download_video(url, video_id, use_cookies, cookies_path)

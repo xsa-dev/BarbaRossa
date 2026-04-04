@@ -24,9 +24,9 @@ if [ $? -ne 0 ]; then
 fi
 
 # Получение ссылки на озвучку
-audio_url=$(vot-cli "$youtube_url" 2>&1 | grep -o 'https://vtrans\.s3-private\.mds\.yandex\.net/tts/prod/[^\"]*' | tail -1)
+audio_url=$(vot-cli-live "$youtube_url" 2>&1 | grep -o 'https://vtrans\.s3-private\.mds\.yandex\.net/tts/prod/[^\"]*' | tail -1)
 if [ -z "$audio_url" ]; then
-    echo "Error: Could not extract audio URL from vot-cli output."
+    echo "Error: Could not extract audio URL from vot-cli-live output."
     exit 1
 fi
 
